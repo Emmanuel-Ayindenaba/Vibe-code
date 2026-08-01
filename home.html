@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smile Numbered — Invoice Numbering</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <div class="sidebar">
+
+    <div class="brand">
+      <span class="mark">☺</span>
+      <div class="brandtext">
+        <span class="name">Smile Numbered</span>
+        <span class="tag">invoice numbering, made painless</span>
+      </div>
+    </div>
+
+    <div class="usercard" id="userCard">
+      <div class="usercard-main" id="userCardToggle">
+        <div class="avatar" id="userAvatar">U</div>
+        <div class="usercard-text">
+          <span class="uname" id="userName">Loading…</span>
+          <span class="uindex" id="userIndex">ID: —</span>
+        </div>
+        <span class="caret">▾</span>
+      </div>
+
+      <div class="usermenu" id="userMenu" hidden>
+        <button class="usermenu-item" id="editProfileBtn">Edit Profile</button>
+        <button class="usermenu-item" id="savedInvoicesBtn">Saved Invoices</button>
+        <button class="usermenu-item" id="adminBtn" hidden>Admin</button>
+        <button class="usermenu-item" id="aboutBtn">About Author</button>
+        <button class="usermenu-item" id="helpBtn">Help / FAQ</button>
+        <div class="usermenu-sep"></div>
+        <button class="usermenu-item danger" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="section">
+      <h2>Invoice</h2>
+      <div class="dropzone" id="dropzone">
+        <strong>Drop a file, or click to browse</strong>
+        JPEG, PNG, or PDF
+      </div>
+      <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf">
+      <div class="hint" id="fileMeta"></div>
+    </div>
+
+    <div class="section" id="stampsSection" hidden>
+      <div class="section-head">
+        <h2>Stamps</h2>
+        <button class="btn-mini" id="addStampBtn">+ Add stamp</button>
+      </div>
+      <div class="hint">Click a stamp on the invoice to select it, then drag to reposition. Each stamp keeps its own numbering.</div>
+      <div class="stamplist" id="stampList"></div>
+    </div>
+
+    <div class="section" id="outputSection" hidden>
+      <h2>Output</h2>
+      <div class="field">
+        <label>Quantity</label>
+        <input type="number" id="countNum" value="10" min="1" max="500">
+      </div>
+      <div class="field">
+        <label>File format</label>
+        <select id="formatSelect">
+          <option value="png">PNG image</option>
+          <option value="pdf">PDF</option>
+        </select>
+      </div>
+      <button class="btn-primary" id="generateBtn">Generate</button>
+      <button class="btn-secondary" id="resetBtn">New</button>
+    </div>
+
+  </div>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+    <div class="canvas-wrap">
+      <div class="empty-state" id="emptyState">
+        <div class="stampicon">☺</div>
+        <h3>Nothing loaded yet</h3>
+        <p>Add an invoice on the left. Then place one or more numbering stamps on it — each can run its own sequence, start number, and interval.</p>
+      </div>
+      <div id="stage" hidden>
+        <canvas id="baseCanvas"></canvas>
+        <div class="canvas-caption">Click or drag a stamp to reposition it</div>
+      </div>
+    </div>
+
+    <div class="strip" id="strip">
+      <div class="strip-head">
+        <h2 id="stripTitle">Generated invoices</h2>
+        <div class="strip-actions">
+          <button class="btn-secondary" id="saveHistoryBtn">Save to history</button>
+          <button class="btn-secondary" id="printBtn">Print</button>
+          <button class="btn-secondary" id="mergePdfBtn">Download as one PDF</button>
+          <button class="btn-secondary" id="downloadAllBtn">Download all (.zip)</button>
+        </div>
+      </div>
+      <div class="thumbs" id="thumbs"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabaseClient.js"></script>
+<script src="auth.js"></script>
+<script src="userContext.js"></script>
+<script src="app.js"></script>
+<script src="side.js"></script>
+</body>
+</html>

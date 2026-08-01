@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Saved Invoices — Smile Numbered</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="subpage-body">
+
+<div class="subpage">
+  <a class="subpage-back" href="home.html">← Back to app</a>
+  <h1>Saved Invoices</h1>
+  <div class="sub-tag">A history of the batches you've generated and saved.</div>
+
+  <div class="subpage-card">
+    <div class="subpage-card-head">
+      <h2>History</h2>
+      <button class="btn-mini" id="clearAllBtn" hidden>Clear all</button>
+    </div>
+    <div id="savedList"><p class="empty-note">Loading…</p></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabaseClient.js"></script>
+<script src="auth.js"></script>
+<script src="userContext.js"></script>
+<script>
+  const list = document.getElementById('savedList');
+  const clearAllBtn = document.getElementById('clearAllBtn');
+  let currentUserId = null;
+
+  async function loadHistory() {
+    const user = await getCurrentUserContext();
+
+    if (!user || user.isGuest) {
+      list.innerHTML = `
+        <p class="empty-note">
+          Guest sessions aren't saved. Create an account to keep a history of
+          the batches you generate.
+        </p>`;
+      return [];
+    }
+
+    currentUserId = user.id;
+    const { data, error } = await sb
+      .from('invoices')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      list.innerHTML = `<p class="empty-note">Couldn't load your history: ${error.message}</p>`;
+      return [];
+    }
+    return data;
+  }
+
+  async function render() {
+    const saved = await loadHistory();
+    clearAllBtn.hidden = saved.length === 0;
+
+    if (!saved.length) {
+      if (currentUserId) {
+        list.innerHTML = `
+          <p class="empty-note">
+            Nothing saved yet. Generate a batch on the main screen, then hit
+            "Save to history" to keep a record of it here.
+          </p>`;
+      }
+      return;
+    }
+
+    list.innerHTML = saved.map(item => `
+      <div class="history-row" data-id="${item.id}">
+        <div class="history-thumb"><img src="${item.thumb}" alt=""></div>
+        <div class="history-info">
+          <div class="fname">${item.name}</div>
+          <div class="fmeta">${item.count} files · ${item.format.toUpperCase()} · ${new Date(item.created_at).toLocaleString()}</div>
+        </div>
+        <button class="history-delete" data-id="${item.id}">Remove</button>
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.history-delete').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        btn.disabled = true;
+        btn.textContent = '…';
+        const { error } = await sb.from('invoices').delete().eq('id', id);
+        if (error) { alert("Couldn't remove that entry: " + error.message); return; }
+        render();
+      });
+    });
+  }
+
+  clearAllBtn.addEventListener('click', async () => {
+    if (!confirm("Clear your entire saved invoice history? This can't be undone.")) return;
+    if (!currentUserId) return;
+    await sb.from('invoices').delete().eq('user_id', currentUserId);
+    render();
+  });
+
+  render();
+</script>
+
+</body>
+</html>

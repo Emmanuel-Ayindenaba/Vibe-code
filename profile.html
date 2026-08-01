@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit Profile — Smile Numbered</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="subpage-body">
+
+<div class="subpage">
+  <a class="subpage-back" href="home.html">← Back to app</a>
+  <h1>Edit Profile</h1>
+  <div class="sub-tag">Update your account details below.</div>
+
+  <div class="subpage-card">
+    <div class="about-head">
+      <div class="about-avatar" id="profAvatar">U</div>
+      <div>
+        <div class="aname" id="profNameDisplay">—</div>
+        <div class="arole" id="profIdDisplay">ID: —</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subpage-card" id="accountCard">
+    <h2>Account</h2>
+    <div class="profile-row">
+      <label>Full name</label>
+      <input type="text" id="profName">
+    </div>
+    <div class="profile-row">
+      <label>Email</label>
+      <input type="email" id="profEmail">
+    </div>
+  </div>
+
+  <div class="subpage-card" id="passwordCard">
+    <h2>Change password</h2>
+    <div class="profile-row">
+      <label>New password</label>
+      <input type="password" id="profNewPassword" placeholder="Leave blank to keep current">
+    </div>
+  </div>
+
+  <button class="btn-primary" id="saveProfileBtn" style="width:100%;">Save changes</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabaseClient.js"></script>
+<script src="auth.js"></script>
+<script src="userContext.js"></script>
+<script>
+  const toastEl = document.getElementById('toast');
+  function showToast(message) {
+    toastEl.textContent = message;
+    toastEl.classList.add('show');
+    setTimeout(() => toastEl.classList.remove('show'), 2600);
+  }
+
+  let currentUser = null;
+
+  (async () => {
+    currentUser = await getCurrentUserContext();
+    if (!currentUser) return;
+
+    document.getElementById('profName').value = currentUser.name || '';
+    document.getElementById('profEmail').value = currentUser.email || '';
+    document.getElementById('profNameDisplay').textContent = currentUser.name || 'Guest';
+    document.getElementById('profIdDisplay').textContent = currentUser.isGuest
+      ? 'Guest session'
+      : 'ID: ' + currentUser.id.slice(0, 8) + '…';
+    document.getElementById('profAvatar').textContent = (currentUser.name || 'U').charAt(0).toUpperCase();
+
+    if (currentUser.isGuest) {
+      document.getElementById('accountCard').hidden = true;
+      document.getElementById('passwordCard').hidden = true;
+      document.getElementById('saveProfileBtn').hidden = true;
+      showToast("Guest sessions can't be edited — create an account to manage a profile.");
+    }
+  })();
+
+  document.getElementById('saveProfileBtn').addEventListener('click', async () => {
+    if (!currentUser || currentUser.isGuest) return;
+
+    const newName = document.getElementById('profName').value.trim();
+    const newEmail = document.getElementById('profEmail').value.trim().toLowerCase();
+    const newPassword = document.getElementById('profNewPassword').value;
+
+    if (!newName || !newEmail) {
+      showToast('Name and email cannot be empty.');
+      return;
+    }
+
+    const btn = document.getElementById('saveProfileBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    // Update display name + cached email in the profiles table
+    const { error: profileError } = await sb
+      .from('profiles')
+      .update({ name: newName, email: newEmail })
+      .eq('id', currentUser.id);
+
+    if (profileError) {
+      btn.disabled = false;
+      btn.textContent = 'Save changes';
+      showToast("Couldn't update profile: " + profileError.message);
+      return;
+    }
+
+    // Update auth email/password if changed
+    const authUpdates = {};
+    if (newEmail !== currentUser.email) authUpdates.email = newEmail;
+    if (newPassword) authUpdates.password = newPassword;
+
+    if (Object.keys(authUpdates).length) {
+      const { error: authError } = await sb.auth.updateUser(authUpdates);
+      if (authError) {
+        btn.disabled = false;
+        btn.textContent = 'Save changes';
+        showToast("Couldn't update login details: " + authError.message);
+        return;
+      }
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Save changes';
+
+    if (authUpdates.email) {
+      showToast('Saved! Check your new email inbox to confirm the address change.');
+    } else {
+      showToast('Profile updated!');
+      setTimeout(() => { window.location.href = 'index.html'; }, 900);
+    }
+  });
+</script>
+
+</body>
+</html>

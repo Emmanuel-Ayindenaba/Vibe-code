@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Smile Numbered</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="subpage-body">
+
+<div class="subpage" style="max-width:920px;">
+  <a class="subpage-back" href="home.html">← Back to app</a>
+  <h1>Admin</h1>
+  <div class="sub-tag">Manage accounts that have signed up.</div>
+
+  <div class="subpage-card">
+    <div class="subpage-card-head">
+      <h2 id="adminHeading">Users</h2>
+      <span class="hint" id="userCount"></span>
+    </div>
+    <div id="adminList"><p class="empty-note">Loading…</p></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabaseClient.js"></script>
+<script src="auth.js"></script>
+<script src="userContext.js"></script>
+<script>
+  const list = document.getElementById('adminList');
+  const userCountEl = document.getElementById('userCount');
+  const toastEl = document.getElementById('toast');
+  let me = null;
+
+  function showToast(message) {
+    toastEl.textContent = message;
+    toastEl.classList.add('show');
+    setTimeout(() => toastEl.classList.remove('show'), 2600);
+  }
+
+  async function init() {
+    me = await getCurrentUserContext();
+
+    if (!me || me.isGuest || !me.isAdmin) {
+      list.innerHTML = `<p class="empty-note">You don't have access to this page.</p>`;
+      userCountEl.textContent = '';
+      return;
+    }
+
+    await render();
+  }
+
+  async function render() {
+    const [{ data: profiles, error: pErr }, { data: invoices, error: iErr }] = await Promise.all([
+      sb.from('profiles').select('*').order('created_at', { ascending: false }),
+      sb.from('invoices').select('user_id')
+    ]);
+
+    if (pErr) {
+      list.innerHTML = `<p class="empty-note">Couldn't load users: ${pErr.message}</p>`;
+      return;
+    }
+
+    const counts = {};
+    (invoices || []).forEach(row => {
+      counts[row.user_id] = (counts[row.user_id] || 0) + 1;
+    });
+
+    userCountEl.textContent = `${profiles.length} account${profiles.length === 1 ? '' : 's'}`;
+
+    list.innerHTML = profiles.map(p => {
+      const isMe = p.id === me.id;
+      return `
+        <div class="history-row" data-id="${p.id}">
+          <div class="history-info">
+            <div class="fname">${p.name || '(no name)'} ${isMe ? '<span class="hint">(you)</span>' : ''}</div>
+            <div class="fmeta">${p.email} · joined ${new Date(p.created_at).toLocaleDateString()} · ${counts[p.id] || 0} saved batches</div>
+          </div>
+          <button class="btn-mini toggle-admin" data-id="${p.id}" data-value="${!p.is_admin}" ${isMe ? 'disabled' : ''}>
+            ${p.is_admin ? 'Remove admin' : 'Make admin'}
+          </button>
+          <button class="history-delete toggle-disabled" data-id="${p.id}" data-value="${!p.is_disabled}" ${isMe ? 'disabled' : ''}>
+            ${p.is_disabled ? 'Enable' : 'Disable'}
+          </button>
+        </div>
+      `;
+    }).join('');
+
+    list.querySelectorAll('.toggle-admin').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        const value = btn.getAttribute('data-value') === 'true';
+        const { error } = await sb.from('profiles').update({ is_admin: value }).eq('id', id);
+        if (error) { showToast("Couldn't update: " + error.message); return; }
+        render();
+      });
+    });
+
+    list.querySelectorAll('.toggle-disabled').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        const value = btn.getAttribute('data-value') === 'true';
+        const { error } = await sb.from('profiles').update({ is_disabled: value }).eq('id', id);
+        if (error) { showToast("Couldn't update: " + error.message); return; }
+        render();
+      });
+    });
+  }
+
+  init();
+</script>
+
+</body>
+</html>
